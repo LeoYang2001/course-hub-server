@@ -4,25 +4,43 @@ import schedule from 'node-schedule';
 
 
 
-function scheduledTask(info) {
-  // print out schedule time and info
-  console.log(`Scheduled task executed at: ${new Date().toISOString()}`);
-  console.log('Scheduled info:', info);
-  // Do NOT use res.json here!
-}
+const GOOGLE_APP_PASSWORD='ppoz wobn qexg bthf'
+
+
 
 export function handleSchedule(req, res) {
-  const { time } = req.body;
-  if (!time) {
-    return res.status(400).json({ error: 'Missing required field: time.' });
+  const { time, to, subject, text, html } = req.body;
+  if (!time || !to || !subject || (!text && !html)) {
+    return res.status(400).json({ error: 'Missing required fields: time, to, subject, text or html.' });
   }
   try {
-    // Pass any info you want to log to the scheduled task
-    schedule.scheduleJob(new Date(time), () => scheduledTask({ time }));
-    console.log(`Task scheduled for: ${time}`);
-    res.json({ success: true, message: `Task scheduled for ${time}` });
+    schedule.scheduleJob(new Date(time), async () => {
+      console.log(`Scheduled email triggered at: ${new Date().toISOString()}`);
+      try {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            user: "leo2001young@gmail.com",
+            pass: GOOGLE_APP_PASSWORD,
+          },
+        });
+        const mailOptions = {
+          from: "leo2001young@gmail.com",
+          to,
+          subject,
+          text,
+          html,
+        };
+        await transporter.sendMail(mailOptions);
+        console.log(`Scheduled email sent to ${to}`);
+      } catch (error) {
+        console.error('Error sending scheduled email:', error);
+      }
+    });
+    console.log(`Email scheduled for: ${time}, to: ${to}, subject: ${subject}`);
+    res.json({ success: true, message: `Email scheduled for ${time}` });
   } catch (error) {
-    console.error('Error scheduling task:', error);
+    console.error('Error scheduling email:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 }
